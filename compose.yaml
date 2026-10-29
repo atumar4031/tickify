@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - 'POSTGRES_DB=tickifydb'
+      - 'POSTGRES_PASSWORD=tickify'
+      - 'POSTGRES_USER=tickify'
+    ports:
+      - '5432'

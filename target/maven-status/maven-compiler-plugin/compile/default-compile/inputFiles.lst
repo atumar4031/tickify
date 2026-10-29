@@ -1,0 +1,16 @@
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/TickifyApplication.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/config/SecurityConfig.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/controller/UserController.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/entities/User.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/enums/AssignmentStatus.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/enums/GeneralStatus.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/enums/ProgressStatus.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/enums/Roles.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/reponse/ApiResponse.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/reponse/UserResponse.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/repository/UserRepository.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/request/LoginRequest.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/request/UserRequest.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/security/UserSecurityContext.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/service/UserService.java
+/Users/almustaphatukur/Documents/owner codebase/tickify/src/main/java/com/aasismgt/serviceImpl/UserServiceImpl.java
