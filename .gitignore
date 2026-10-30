@@ -4,6 +4,9 @@
 # Log file
 *.log
 
+# maven build files
+target/
+
 # BlueJ files
 *.ctxt
 
