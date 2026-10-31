@@ -46,21 +46,3 @@ public class Ticket {
     private GeneralStatus generalStatus;
 }
 
-
-// Ticket
-//
-//Data Types Field Name
-//
-//(Long) -> Id
-//(String) -> title
-//(TEXT) -> description
-//(enum) -> assignnemt status (ASSIGNED, UNASSIGNED)
-//(enum) -> progress status (OPEN, IN_PROGRESS, IN_REVIEW, DONE)
-//(Long) -> assignedTo (user_id)
-//(Instant) -> createdAt
-//(Instant) -> completedAt
-//(Instant) -> assignedAt
-//(enum) -> status (ACTIVE, INACTIVE, DELETED)
-//
-//Note: please refer to user entity if you got stock and need some idea
-
