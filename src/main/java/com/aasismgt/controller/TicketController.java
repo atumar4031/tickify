@@ -31,6 +31,22 @@ public class TicketController {
 
         return ticketService.updateTicket(id, ticketRequest);
     }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse> getTickets() {
+        return ticketService.getTickets();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse> getTicket(@PathVariable Long id) {
+                return ticketService.getTicket(id);
+    }
+
+    @DeleteMapping("{id}")
+    public ResponseEntity<ApiResponse> deleteTicket(@PathVariable Long id) {
+        return ticketService.deleteTicket(id);
+    }
+
     //
 }
 

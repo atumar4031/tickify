@@ -11,5 +11,5 @@ public interface TicketService {
     ResponseEntity<ApiResponse> updateTicket(Long id, TicketRequest ticketRequest);
     ResponseEntity<ApiResponse> deleteTicket(Long id);
     ResponseEntity<ApiResponse> getTicket(Long id);
-    Page<TicketResponse> getTickets();
+    ResponseEntity<ApiResponse> getTickets();
 }

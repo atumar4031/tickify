@@ -9,8 +9,11 @@ import com.aasismgt.reponse.TicketResponse;
 import com.aasismgt.repository.TicketRepository;
 import com.aasismgt.request.TicketRequest;
 import com.aasismgt.service.TicketService;
+import com.aasismgt.repository.UserRepository;
+import com.aasismgt.entities.User;
+import com.aasismgt.enums.Roles;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,8 +28,11 @@ public class TicketServiceImpl implements TicketService {
 
     private final TicketRepository ticketRepository;
 
-    public TicketServiceImpl(TicketRepository ticketRepository) {
+    private final UserRepository userRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository, UserRepository userRepository) {
         this.ticketRepository = ticketRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -102,7 +108,6 @@ public class TicketServiceImpl implements TicketService {
              ticketRepository.save(ticket);
         }
 
-
         return ResponseEntity.ok(
                 new ApiResponse().success(
                         "Ticket updated successfully",
@@ -111,21 +116,150 @@ public class TicketServiceImpl implements TicketService {
         );
     }
 
+
     @Override
     public ResponseEntity<ApiResponse> deleteTicket(Long id) {
-        return null;
+
+        User user = getCurrentUser();
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        if (user.getRole() != Roles.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error("Only admins can delete tickets"));
+        }
+
+        Ticket ticket = ticketRepository
+                .findByIdAndGeneralStatus(id, GeneralStatus.ACTIVE)
+                .orElse(null);
+
+        if (ticket == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        ticket.setGeneralStatus(GeneralStatus.DELETED);
+        ticketRepository.save(ticket);
+
+        return ResponseEntity.ok(
+                new ApiResponse().success("Ticket deleted successfully", null)
+        );
     }
+
+
+    @Override
+    public ResponseEntity<ApiResponse> getTickets() {
+
+        User user = getCurrentUser();
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        List<Ticket> tickets;
+
+        if (user.getRole() == Roles.ADMIN) {
+
+            tickets = ticketRepository.findByGeneralStatus(
+                    GeneralStatus.ACTIVE);
+
+        } else if (user.getRole() == Roles.EMPLOYEE) {
+
+            tickets = ticketRepository.findByGeneralStatusAndAssignedTo(
+                    GeneralStatus.ACTIVE, user.getId());
+
+        } else if (user.getRole() == Roles.REVIEWER) {
+
+            tickets = ticketRepository.findByGeneralStatusAndProgressStatus(
+                    GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW);
+
+        } else {
+
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error("You are not authorized to view tickets"));
+        }
+
+        List<TicketResponse> ticketResponses = tickets.stream()
+                .map(TicketResponse::from)
+                .toList();
+
+        return ResponseEntity.ok(
+                new ApiResponse().success("Tickets retrieved successfully", ticketResponses)
+        );
+    }
+
 
     @Override
     public ResponseEntity<ApiResponse> getTicket(Long id) {
-        // TicketResponse
-        return null;
+
+        User user = getCurrentUser();
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        Ticket ticket = ticketRepository
+                .findByIdAndGeneralStatus(id, GeneralStatus.ACTIVE)
+                .orElse(null);
+
+        if (ticket == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        boolean canView = false;
+
+        if (user.getRole() == Roles.ADMIN) {
+
+            canView = true;
+
+        } else if (user.getRole() == Roles.EMPLOYEE) {
+
+            canView = ticket.getAssignedTo() != null
+                    && ticket.getAssignedTo().equals(user.getId());
+
+        } else if (user.getRole() == Roles.REVIEWER) {
+
+            canView = ticket.getProgressStatus() == ProgressStatus.IN_REVIEW;
+        }
+
+        if (!canView) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        return ResponseEntity.ok(
+                new ApiResponse().success(
+                        "Ticket retrieved successfully",
+                        TicketResponse.from(ticket)
+                )
+        );
     }
 
-    @Override
-    public Page<TicketResponse> getTickets() {
-        return null;
+
+    //
+    private User getCurrentUser() {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication.getName() == null) {
+            return null;
+        }
+
+        return userRepository.findByEmail(authentication.getName())
+                .orElse(null);
     }
+
+
+
+
 
     private boolean isAdmin() {
         Authentication authentication =
