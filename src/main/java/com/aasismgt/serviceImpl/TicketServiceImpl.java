@@ -37,8 +37,8 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (ticketRequest == null ||
-                isBlank(ticketRequest.title()) ||
-                isBlank(ticketRequest.description())) {
+                !hastText(ticketRequest.title()) ||
+                !hastText(ticketRequest.description())) {
 
             return ResponseEntity.badRequest()
                     .body(new ApiResponse().error("Ticket title and description are required"));
@@ -46,8 +46,8 @@ public class TicketServiceImpl implements TicketService {
 
         Ticket ticket = new Ticket();
 
-        ticket.setTitle(ticketRequest.title().trim());
-        ticket.setDescription(ticketRequest.description().trim());
+        ticket.setTitle(ticketRequest.title());
+        ticket.setDescription(ticketRequest.description());
         ticket.setAssignmentStatus(AssignmentStatus.UNASSIGNED);
         ticket.setProgressStatus(ProgressStatus.OPEN);
         ticket.setGeneralStatus(GeneralStatus.ACTIVE);
@@ -64,8 +64,8 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public ResponseEntity<ApiResponse> updateTicket(Long id, TicketRequest ticketRequest) {
-
-        if (!isAdmin()) {
+        boolean admin = isAdmin();
+        if (!admin) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse().error("Only admins can update tickets"));
         }
@@ -75,30 +75,37 @@ public class TicketServiceImpl implements TicketService {
                     .body(new ApiResponse().error("Ticket ID is required"));
         }
 
-        if (ticketRequest == null ||
-                isBlank(ticketRequest.title()) ||
-                isBlank(ticketRequest.description())) {
-
-            return ResponseEntity.badRequest()
-                    .body(new ApiResponse().error("Ticket title and description are required"));
-        }
-
         Ticket ticket = ticketRepository.findById(id).orElse(null);
-
         if (ticket == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse().error("Ticket not found"));
         }
 
-        ticket.setTitle(ticketRequest.title().trim());
-        ticket.setDescription(ticketRequest.description().trim());
+        if (ticketRequest == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error("Ticket title and description are required"));
+        }
 
-        Ticket updatedTicket = ticketRepository.save(ticket);
+        boolean hasUpdate = false;
+        if (hastText(ticketRequest.title()) && ticketRequest.title().equalsIgnoreCase(ticket.getTitle())) {
+            ticket.setTitle(ticketRequest.title());
+            hasUpdate = true;
+        }
+
+        if (hastText(ticketRequest.description()) && ticketRequest.title().equalsIgnoreCase(ticket.getDescription())) {
+            ticket.setDescription(ticketRequest.description());
+            hasUpdate = true;
+        }
+
+        if (hasUpdate) {
+             ticketRepository.save(ticket);
+        }
+
 
         return ResponseEntity.ok(
                 new ApiResponse().success(
                         "Ticket updated successfully",
-                        TicketResponse.from(updatedTicket)
+                        TicketResponse.from(ticket)
                 )
         );
     }
@@ -114,7 +121,7 @@ public class TicketServiceImpl implements TicketService {
                         authority.getAuthority().equals("ROLE_ADMIN"));
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
+    private boolean hastText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }
