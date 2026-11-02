@@ -10,6 +10,7 @@ import com.aasismgt.repository.TicketRepository;
 import com.aasismgt.request.TicketRequest;
 import com.aasismgt.service.TicketService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -108,6 +109,22 @@ public class TicketServiceImpl implements TicketService {
                         TicketResponse.from(ticket)
                 )
         );
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> deleteTicket(Long id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> getTicket(Long id) {
+        // TicketResponse
+        return null;
+    }
+
+    @Override
+    public Page<TicketResponse> getTickets() {
+        return null;
     }
 
     private boolean isAdmin() {
