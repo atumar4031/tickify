@@ -32,7 +32,7 @@ public class Ticket {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProgressStatus progressStatus;
-
+    
     private Long assignedTo;
 
     private Instant createdAt;
