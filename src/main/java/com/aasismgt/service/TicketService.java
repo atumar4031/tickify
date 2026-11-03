@@ -1,5 +1,6 @@
 package com.aasismgt.service;
 
+import com.aasismgt.enums.ProgressStatus;
 import com.aasismgt.reponse.ApiResponse;
 import com.aasismgt.reponse.TicketResponse;
 import com.aasismgt.request.TicketRequest;
@@ -11,5 +12,11 @@ public interface TicketService {
     ResponseEntity<ApiResponse> updateTicket(Long id, TicketRequest ticketRequest);
     ResponseEntity<ApiResponse> deleteTicket(Long id);
     ResponseEntity<ApiResponse> getTicket(Long id);
-    ResponseEntity<ApiResponse> getTickets();
+    Page<TicketResponse> getTickets(int page, int size);
+    ResponseEntity<ApiResponse> assignTicket(Long id, Long userId);
+    ResponseEntity<ApiResponse> unAssignTicket(Long id, Long userId);
+    ResponseEntity<ApiResponse> moveTicket(Long id); // employee uses this to move ticket to next stage
+    ResponseEntity<ApiResponse> submitReview(Long id); // employee uses this to submit ticket for review
+    ResponseEntity<ApiResponse> approveReview(Long id); // reviwer uses this to approve review
+
 }

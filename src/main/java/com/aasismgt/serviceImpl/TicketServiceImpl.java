@@ -12,8 +12,10 @@ import com.aasismgt.service.TicketService;
 import com.aasismgt.repository.UserRepository;
 import com.aasismgt.entities.User;
 import com.aasismgt.enums.Roles;
-import java.util.List;
+
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -151,49 +153,6 @@ public class TicketServiceImpl implements TicketService {
 
 
     @Override
-    public ResponseEntity<ApiResponse> getTickets() {
-
-        User user = getCurrentUser();
-
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse().error("Please log in"));
-        }
-
-        List<Ticket> tickets;
-
-        if (user.getRole() == Roles.ADMIN) {
-
-            tickets = ticketRepository.findByGeneralStatus(
-                    GeneralStatus.ACTIVE);
-
-        } else if (user.getRole() == Roles.EMPLOYEE) {
-
-            tickets = ticketRepository.findByGeneralStatusAndAssignedTo(
-                    GeneralStatus.ACTIVE, user.getId());
-
-        } else if (user.getRole() == Roles.REVIEWER) {
-
-            tickets = ticketRepository.findByGeneralStatusAndProgressStatus(
-                    GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW);
-
-        } else {
-
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse().error("You are not authorized to view tickets"));
-        }
-
-        List<TicketResponse> ticketResponses = tickets.stream()
-                .map(TicketResponse::from)
-                .toList();
-
-        return ResponseEntity.ok(
-                new ApiResponse().success("Tickets retrieved successfully", ticketResponses)
-        );
-    }
-
-
-    @Override
     public ResponseEntity<ApiResponse> getTicket(Long id) {
 
         User user = getCurrentUser();
@@ -212,23 +171,9 @@ public class TicketServiceImpl implements TicketService {
                     .body(new ApiResponse().error("Ticket not found"));
         }
 
-        boolean canView = false;
-
-        if (user.getRole() == Roles.ADMIN) {
-
-            canView = true;
-
-        } else if (user.getRole() == Roles.EMPLOYEE) {
-
-            canView = ticket.getAssignedTo() != null
-                    && ticket.getAssignedTo().equals(user.getId());
-
-        } else if (user.getRole() == Roles.REVIEWER) {
-
-            canView = ticket.getProgressStatus() == ProgressStatus.IN_REVIEW;
-        }
-
-        if (!canView) {
+        boolean isUser = user.getRole() == Roles.EMPLOYEE;
+        boolean isAsseigned = ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(user.getId());
+        if (isUser && !isAsseigned) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse().error("Ticket not found"));
         }
@@ -240,6 +185,76 @@ public class TicketServiceImpl implements TicketService {
                 )
         );
     }
+
+    @Override
+    public Page<TicketResponse> getTickets(int page, int size) {
+
+        User user = getCurrentUser();
+
+        if (user == null) {
+           throw new RuntimeException("User not authenticated");
+        }
+
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<Ticket> tickets =  getPaginatedTixket(pageRequest, user);
+        return tickets.map(TicketResponse::from);
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> assignTicket(Long id, Long userId) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> unAssignTicket(Long id, Long userId) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> moveTicket(Long id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> submitReview(Long id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> approveReview(Long id) {
+        return null;
+    }
+
+    private Page<Ticket> getPaginatedTixket(PageRequest pageRequest, User user) {
+        return switch (user.getRole()) {
+            case ADMIN -> ticketRepository.findAll(pageRequest);
+            case EMPLOYEE -> ticketRepository.findAllByAssignedToAndGeneralStatus(user.getId(), GeneralStatus.ACTIVE, pageRequest);
+            case REVIEWER -> ticketRepository.findByGeneralStatusAndProgressStatus(GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW, pageRequest);
+            default -> throw new RuntimeException("You are not authorized to view tickets");
+        };
+    }
+
+//        List<Ticket> tickets;
+//        if (user.getRole() == Roles.ADMIN) {
+//            tickets = ticketRepository.findByGeneralStatus(GeneralStatus.ACTIVE);
+//        } else if (user.getRole() == Roles.EMPLOYEE) {
+//            tickets = ticketRepository.findByGeneralStatusAndAssignedTo(GeneralStatus.ACTIVE, user.getId());
+//        } else if (user.getRole() == Roles.REVIEWER) {
+//            tickets = ticketRepository.findByGeneralStatusAndProgressStatus(
+//                    GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW);
+//        } else {
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                    .body(new ApiResponse().error("You are not authorized to view tickets"));
+//        }
+//
+//        List<TicketResponse> ticketResponses = tickets.stream()
+//                .map(TicketResponse::from)
+//                .toList();
+//
+//        return ResponseEntity.ok(
+//                new ApiResponse().success("Tickets retrieved successfully", ticketResponses)
+//        );
+//    }
 
 
     //
