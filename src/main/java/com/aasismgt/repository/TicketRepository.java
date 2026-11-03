@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface TicketRepository  extends JpaRepository<Ticket, Long>{
 //    List<Ticket> findByGeneralStatus(GeneralStatus generalStatus);
 
+//    Page<Ticket> findByGeneralStatus(GeneralStatus generalStatus, Pageable pageable);
+
     Page<Ticket> findAllByAssignedToAndGeneralStatus(Long assignedTo, GeneralStatus generalStatus, Pageable pageable);
 
     Page<Ticket> findByGeneralStatusAndProgressStatus(

@@ -14,8 +14,10 @@ import com.aasismgt.entities.User;
 import com.aasismgt.enums.Roles;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.data.autoconfigure.web.DataWebProperties;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -196,36 +198,12 @@ public class TicketServiceImpl implements TicketService {
         }
 
         PageRequest pageRequest = PageRequest.of(page, size);
-        Page<Ticket> tickets =  getPaginatedTixket(pageRequest, user);
+        Page<Ticket> tickets =  getPaginatedTicket(pageRequest, user);
         return tickets.map(TicketResponse::from);
     }
 
-    @Override
-    public ResponseEntity<ApiResponse> assignTicket(Long id, Long userId) {
-        return null;
-    }
 
-    @Override
-    public ResponseEntity<ApiResponse> unAssignTicket(Long id, Long userId) {
-        return null;
-    }
-
-    @Override
-    public ResponseEntity<ApiResponse> moveTicket(Long id) {
-        return null;
-    }
-
-    @Override
-    public ResponseEntity<ApiResponse> submitReview(Long id) {
-        return null;
-    }
-
-    @Override
-    public ResponseEntity<ApiResponse> approveReview(Long id) {
-        return null;
-    }
-
-    private Page<Ticket> getPaginatedTixket(PageRequest pageRequest, User user) {
+    private Page<Ticket> getPaginatedTicket(PageRequest pageRequest, User user) {
         return switch (user.getRole()) {
             case ADMIN -> ticketRepository.findAll(pageRequest);
             case EMPLOYEE -> ticketRepository.findAllByAssignedToAndGeneralStatus(user.getId(), GeneralStatus.ACTIVE, pageRequest);
@@ -256,6 +234,278 @@ public class TicketServiceImpl implements TicketService {
 //        );
 //    }
 
+    @Override
+    public ResponseEntity<ApiResponse> assignTicket(Long id, Long userId) {
+
+        User admin = getCurrentUser();
+
+        if (admin == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        if (admin.getRole() != Roles.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error("Only admins can assign tickets"));
+        }
+
+        if (id == null || userId == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error("Ticket ID and employee ID are required"));
+        }
+
+        Ticket ticket = ticketRepository
+                .findByIdAndGeneralStatus(id, GeneralStatus.ACTIVE)
+                .orElse(null);
+
+        if (ticket == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        User employee = userRepository.findById(userId).orElse(null);
+
+        if (employee == null || employee.getRole() != Roles.EMPLOYEE
+                || employee.getStatus() != GeneralStatus.ACTIVE) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error("Active employee not found"));
+        }
+
+        if (ticket.getAssignedTo() != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse().error(
+                            "Ticket is already assigned. Unassign it first."
+                    ));
+        }
+
+        ticket.setAssignedTo(employee.getId());
+        ticket.setAssignmentStatus(AssignmentStatus.ASSIGNED);
+        ticket.setAssignedAt(Instant.now());
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        return ResponseEntity.ok(
+                new ApiResponse().success(
+                        "Ticket assigned successfully",
+                        TicketResponse.from(savedTicket)
+                )
+        );
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> unAssignTicket(Long id, Long userId) {
+
+        User admin = getCurrentUser();
+
+        if (admin == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        if (admin.getRole() != Roles.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error("Only admins can unassign tickets"));
+        }
+
+        if (id == null || userId == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error("Ticket ID and employee ID are required"));
+        }
+
+        Ticket ticket = ticketRepository
+                .findByIdAndGeneralStatus(id, GeneralStatus.ACTIVE)
+                .orElse(null);
+
+        if (ticket == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        if (ticket.getAssignedTo() == null
+                || !ticket.getAssignedTo().equals(userId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error(
+                            "This ticket is not assigned to the specified employee"
+                    ));
+        }
+
+        ticket.setAssignedTo(null);
+        ticket.setAssignmentStatus(AssignmentStatus.UNASSIGNED);
+        ticket.setAssignedAt(null);
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        return ResponseEntity.ok(
+                new ApiResponse().success(
+                        "Ticket unassigned successfully",
+                        TicketResponse.from(savedTicket)
+                )
+        );
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> moveTicket(Long id) {
+
+        User employee = getCurrentUser();
+
+        if (employee == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        if (employee.getRole() != Roles.EMPLOYEE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error("Only employees can move tickets"));
+        }
+
+        if (id == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error("Ticket ID is required"));
+        }
+
+        Ticket ticket = ticketRepository
+                .findByIdAndGeneralStatus(id, GeneralStatus.ACTIVE)
+                .orElse(null);
+
+        if (ticket == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        if (ticket.getAssignedTo() == null
+                || !ticket.getAssignedTo().equals(employee.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error(
+                            "You can only move tickets assigned to you"
+                    ));
+        }
+
+        if (ticket.getProgressStatus() != ProgressStatus.OPEN) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error(
+                            "Only OPEN tickets can be moved to IN_PROGRESS"
+                    ));
+        }
+
+        ticket.setProgressStatus(ProgressStatus.IN_PROGRESS);
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        return ResponseEntity.ok(
+                new ApiResponse().success(
+                        "Ticket moved to IN_PROGRESS successfully",
+                        TicketResponse.from(savedTicket)
+                )
+        );
+    }
+    @Override
+    public ResponseEntity<ApiResponse> submitReview(Long id) {
+
+        User employee = getCurrentUser();
+
+        if (employee == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        if (employee.getRole() != Roles.EMPLOYEE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error(
+                            "Only employees can submit tickets for review"
+                    ));
+        }
+
+        if (id == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error("Ticket ID is required"));
+        }
+
+        Ticket ticket = ticketRepository
+                .findByIdAndGeneralStatus(id, GeneralStatus.ACTIVE)
+                .orElse(null);
+
+        if (ticket == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        if (ticket.getAssignedTo() == null
+                || !ticket.getAssignedTo().equals(employee.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error(
+                            "You can only submit tickets assigned to you"
+                    ));
+        }
+
+        if (ticket.getProgressStatus() != ProgressStatus.IN_PROGRESS) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error(
+                            "Only IN_PROGRESS tickets can be submitted for review"
+                    ));
+        }
+
+        ticket.setProgressStatus(ProgressStatus.IN_REVIEW);
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        return ResponseEntity.ok(
+                new ApiResponse().success(
+                        "Ticket submitted for review successfully",
+                        TicketResponse.from(savedTicket)
+                )
+        );
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse> approveReview(Long id) {
+
+        User reviewer = getCurrentUser();
+
+        if (reviewer == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse().error("Please log in"));
+        }
+
+        if (reviewer.getRole() != Roles.REVIEWER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse().error(
+                            "Only reviewers can approve tickets"
+                    ));
+        }
+
+        if (id == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error("Ticket ID is required"));
+        }
+
+        Ticket ticket = ticketRepository
+                .findByIdAndGeneralStatus(id, GeneralStatus.ACTIVE)
+                .orElse(null);
+
+        if (ticket == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse().error("Ticket not found"));
+        }
+
+        if (ticket.getProgressStatus() != ProgressStatus.IN_REVIEW) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse().error(
+                            "Only IN_REVIEW tickets can be approved"
+                    ));
+        }
+
+        ticket.setProgressStatus(ProgressStatus.COMPLETED);
+        ticket.setCompletedAt(Instant.now());
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        return ResponseEntity.ok(
+                new ApiResponse().success(
+                        "Ticket approved and completed successfully",
+                        TicketResponse.from(savedTicket)
+                )
+        );
+    }
 
     //
     private User getCurrentUser() {

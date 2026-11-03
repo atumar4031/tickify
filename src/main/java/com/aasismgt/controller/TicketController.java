@@ -34,7 +34,7 @@ public class TicketController {
         return ticketService.updateTicket(id, ticketRequest);
     }
 
-    @DeleteMapping("{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse> deleteTicket(@PathVariable Long id) {
         return ticketService.deleteTicket(id);
     }
@@ -48,6 +48,31 @@ public class TicketController {
     @GetMapping("/paged")
     public Page<TicketResponse> getTickets(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ticketService.getTickets(page, size);
+    }
+
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<ApiResponse> assignTicket(@PathVariable Long id, @RequestParam Long userId) {
+        return ticketService.assignTicket(id, userId);
+    }
+
+    @PutMapping("/{id}/unassign")
+    public ResponseEntity<ApiResponse> unAssignTicket(@PathVariable Long id, @RequestParam Long userId) {
+        return ticketService.unAssignTicket(id, userId);
+    }
+
+    @PatchMapping("/{id}/move")
+    public ResponseEntity<ApiResponse> moveTicket(@PathVariable Long id) {
+        return ticketService.moveTicket(id);
+    }
+
+    @PatchMapping("/{id}/submit-review")
+    public ResponseEntity<ApiResponse> submitReview(@PathVariable Long id) {
+        return ticketService.submitReview(id);
+    }
+
+    @PatchMapping("/{id}/approve-review")
+    public ResponseEntity<ApiResponse> approveReview(@PathVariable Long id) {
+        return ticketService.approveReview(id);
     }
 
     //
