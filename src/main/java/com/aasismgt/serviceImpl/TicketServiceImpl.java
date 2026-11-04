@@ -205,7 +205,8 @@ public class TicketServiceImpl implements TicketService {
 
     private Page<Ticket> getPaginatedTicket(PageRequest pageRequest, User user) {
         return switch (user.getRole()) {
-            case ADMIN -> ticketRepository.findAll(pageRequest);
+//            case ADMIN -> ticketRepository.findAll(pageRequest);
+            case ADMIN -> ticketRepository.findByGeneralStatus(GeneralStatus.ACTIVE, pageRequest);
             case EMPLOYEE -> ticketRepository.findAllByAssignedToAndGeneralStatus(user.getId(), GeneralStatus.ACTIVE, pageRequest);
             case REVIEWER -> ticketRepository.findByGeneralStatusAndProgressStatus(GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW, pageRequest);
             default -> throw new RuntimeException("You are not authorized to view tickets");
