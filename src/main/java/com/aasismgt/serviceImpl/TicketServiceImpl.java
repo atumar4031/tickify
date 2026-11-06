@@ -189,29 +189,95 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public Page<TicketResponse> getTickets(int page, int size) {
+    public Page<TicketResponse> getTickets(
+            int page,
+            int size,
+            ProgressStatus progressStatus) {
 
         User user = getCurrentUser();
 
         if (user == null) {
-           throw new RuntimeException("User not authenticated");
+            throw new RuntimeException("User not authenticated");
         }
 
-        PageRequest pageRequest = PageRequest.of(page, size);
-        Page<Ticket> tickets =  getPaginatedTicket(pageRequest, user);
+        if (page < 0 || size <= 0) {
+            throw new IllegalArgumentException("Invalid pagination values");
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Ticket> tickets = getPaginatedTicket(
+                pageable, user, progressStatus
+        );
+
         return tickets.map(TicketResponse::from);
     }
 
+    private Page<Ticket> getPaginatedTicket(
+            Pageable pageable,
+            User user,
+            ProgressStatus progressStatus) {
 
-    private Page<Ticket> getPaginatedTicket(PageRequest pageRequest, User user) {
         return switch (user.getRole()) {
-//            case ADMIN -> ticketRepository.findAll(pageRequest);
-            case ADMIN -> ticketRepository.findByGeneralStatus(GeneralStatus.ACTIVE, pageRequest);
-            case EMPLOYEE -> ticketRepository.findAllByAssignedToAndGeneralStatus(user.getId(), GeneralStatus.ACTIVE, pageRequest);
-            case REVIEWER -> ticketRepository.findByGeneralStatusAndProgressStatus(GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW, pageRequest);
-            default -> throw new RuntimeException("You are not authorized to view tickets");
+
+            case ADMIN, REVIEWER -> {
+                if (progressStatus != null) {
+                    yield ticketRepository.findAllByGeneralStatusAndProgressStatus(
+                            GeneralStatus.ACTIVE,
+                            progressStatus,
+                            pageable
+                    );
+                }
+
+                yield ticketRepository.findAllByGeneralStatus(
+                        GeneralStatus.ACTIVE,
+                        pageable
+                );
+            }
+
+            case EMPLOYEE -> {
+                if (progressStatus != null) {
+                    yield ticketRepository
+                            .findByAssignedToAndGeneralStatusAndProgressStatus(
+                                    user.getId(),
+                                    GeneralStatus.ACTIVE,
+                                    progressStatus,
+                                    pageable
+                            );
+                }
+
+                yield ticketRepository.findAllByAssignedToAndGeneralStatus(
+                        user.getId(),
+                        GeneralStatus.ACTIVE,
+                        pageable
+                );
+            }
         };
     }
+
+//    @Override
+//    public Page<TicketResponse> getTickets(int page, int size) {
+//
+//        User user = getCurrentUser();
+//
+//        if (user == null) {
+//           throw new RuntimeException("User not authenticated");
+//        }
+//
+//        PageRequest pageRequest = PageRequest.of(page, size);
+//        Page<Ticket> tickets =  getPaginatedTicket(pageRequest, user);
+//        return tickets.map(TicketResponse::from);
+//    }
+//
+//    private Page<Ticket> getPaginatedTicket(PageRequest pageRequest, User user) {
+//        return switch (user.getRole()) {
+////            case ADMIN -> ticketRepository.findAll(pageRequest);
+//            case ADMIN -> ticketRepository.findAllByGeneralStatus(GeneralStatus.ACTIVE, pageRequest);
+//            case EMPLOYEE -> ticketRepository.findAllByAssignedToAndGeneralStatus(user.getId(), GeneralStatus.ACTIVE, pageRequest);
+//            case REVIEWER -> ticketRepository.findAllByGeneralStatusAndProgressStatus(GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW, pageRequest);
+//            default -> throw new RuntimeException("You are not authorized to view tickets");
+//        };
+//    }
 
 //        List<Ticket> tickets;
 //        if (user.getRole() == Roles.ADMIN) {
@@ -237,6 +303,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public ResponseEntity<ApiResponse> assignTicket(Long id, Long userId) {
+        // admin
 
         User admin = getCurrentUser();
 

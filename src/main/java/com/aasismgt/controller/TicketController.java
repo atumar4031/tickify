@@ -1,6 +1,7 @@
 package com.aasismgt.controller;
 
 
+import com.aasismgt.enums.ProgressStatus;
 import com.aasismgt.reponse.ApiResponse;
 import com.aasismgt.reponse.TicketResponse;
 import com.aasismgt.request.TicketRequest;
@@ -46,8 +47,8 @@ public class TicketController {
 
 
     @GetMapping("/paged")
-    public Page<TicketResponse> getTickets(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        return ticketService.getTickets(page, size);
+    public Page<TicketResponse> getTickets(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @RequestParam(required = false)ProgressStatus progressStatus) {
+        return ticketService.getTickets(page, size, progressStatus);
     }
 
     @PutMapping("/{id}/assign")

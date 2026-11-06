@@ -12,7 +12,7 @@ public interface TicketService {
     ResponseEntity<ApiResponse> updateTicket(Long id, TicketRequest ticketRequest);
     ResponseEntity<ApiResponse> deleteTicket(Long id);
     ResponseEntity<ApiResponse> getTicket(Long id);
-    Page<TicketResponse> getTickets(int page, int size);
+    Page<TicketResponse> getTickets(int page, int size, ProgressStatus progressStatus);
     ResponseEntity<ApiResponse> assignTicket(Long id, Long userId); // admin
     ResponseEntity<ApiResponse> unAssignTicket(Long id, Long userId); // admin
     ResponseEntity<ApiResponse> moveTicket(Long id); // employee uses this to move ticket to next stage
