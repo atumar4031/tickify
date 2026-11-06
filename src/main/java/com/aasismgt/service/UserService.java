@@ -9,5 +9,7 @@ import org.springframework.http.ResponseEntity;
 
 public interface UserService {
     ResponseEntity<ApiResponse> saveUser(UserRequest userRequest);
-    ResponseEntity<ApiResponse> login(LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response);
+    ResponseEntity<ApiResponse> login(LoginRequest loginRequest,
+                                      HttpServletRequest request,
+                                      HttpServletResponse response);
 }

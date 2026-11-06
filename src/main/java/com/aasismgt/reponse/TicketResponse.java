@@ -30,9 +30,9 @@ public class TicketResponse {
                 ticket.getAssignmentStatus(),
                 ticket.getProgressStatus(),
                 ticket.getAssignedTo(),
-                ticket.getCreatedAt().toString(),
-                ticket.getCompletedAt().toString(),
-                ticket.getAssignedAt().toString(),
+                ticket.getCreatedAt() != null ? ticket.getCreatedAt().toString() : null,
+                ticket.getCompletedAt() != null ? ticket.getCompletedAt().toString() : null,
+                ticket.getAssignedAt() != null ? ticket.getAssignedAt().toString() : null,
                 ticket.getGeneralStatus());
     }
 }

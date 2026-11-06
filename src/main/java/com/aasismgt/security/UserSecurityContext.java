@@ -15,7 +15,6 @@ public class UserSecurityContext {
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
     public void saveUserContext(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
-        // Spring Security no longer persists the context automatically, so store it in the session explicitly.
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);

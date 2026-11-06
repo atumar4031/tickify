@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
@@ -33,34 +34,20 @@ public class Ticket {
     @Column(nullable = false)
     private ProgressStatus progressStatus;
 
+    @Column(nullable = true)
     private Long assignedTo;
 
+    @CreationTimestamp
     private Instant createdAt;
 
+    @Column(nullable = true)
     private Instant completedAt;
 
+    @Column(nullable = true)
     private Instant assignedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private GeneralStatus generalStatus;
 }
-
-
-// Ticket
-//
-//Data Types Field Name
-//
-//(Long) -> Id
-//(String) -> title
-//(TEXT) -> description
-//(enum) -> assignnemt status (ASSIGNED, UNASSIGNED)
-//(enum) -> progress status (OPEN, IN_PROGRESS, IN_REVIEW, DONE)
-//(Long) -> assignedTo (user_id)
-//(Instant) -> createdAt
-//(Instant) -> completedAt
-//(Instant) -> assignedAt
-//(enum) -> status (ACTIVE, INACTIVE, DELETED)
-//
-//Note: please refer to user entity if you got stock and need some idea
 
