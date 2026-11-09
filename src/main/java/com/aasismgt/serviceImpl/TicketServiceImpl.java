@@ -7,6 +7,8 @@ import com.aasismgt.enums.ProgressStatus;
 import com.aasismgt.reponse.ApiResponse;
 import com.aasismgt.reponse.TicketResponse;
 import com.aasismgt.repository.TicketRepository;
+import com.aasismgt.repository.TicketSpecification;
+import com.aasismgt.request.TicketFilterRequest;
 import com.aasismgt.request.TicketRequest;
 import com.aasismgt.service.TicketService;
 import com.aasismgt.repository.UserRepository;
@@ -18,6 +20,7 @@ import org.springframework.boot.data.autoconfigure.web.DataWebProperties;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -192,7 +195,7 @@ public class TicketServiceImpl implements TicketService {
     public Page<TicketResponse> getTickets(
             int page,
             int size,
-            ProgressStatus progressStatus) {
+            TicketFilterRequest filterRequest) {
 
         User user = getCurrentUser();
 
@@ -201,14 +204,28 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (page < 0 || size <= 0) {
-            throw new IllegalArgumentException("Invalid pagination values");
+            throw new IllegalArgumentException(
+                    "Invalid pagination values"
+            );
+        }
+
+        if (filterRequest.assignedFrom() != null
+                && filterRequest.assignedTo() != null
+                && filterRequest.assignedFrom()
+                .isAfter(filterRequest.assignedTo())) {
+
+            throw new IllegalArgumentException(
+                    "Start date cannot be after end date"
+            );
         }
 
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<Ticket> tickets = getPaginatedTicket(
-                pageable, user, progressStatus
-        );
+        Specification<Ticket> specification =
+                TicketSpecification.filterTickets(filterRequest, user);
+
+        Page<Ticket> tickets =
+                ticketRepository.findAll(specification, pageable);
 
         return tickets.map(TicketResponse::from);
     }
