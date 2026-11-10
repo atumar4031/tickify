@@ -105,12 +105,12 @@ public class TicketServiceImpl implements TicketService {
         }
 
         boolean hasUpdate = false;
-        if (hastText(ticketRequest.title()) && ticketRequest.title().equalsIgnoreCase(ticket.getTitle())) {
+        if (hastText(ticketRequest.title()) && !ticketRequest.title().equals(ticket.getTitle())) {
             ticket.setTitle(ticketRequest.title());
             hasUpdate = true;
         }
 
-        if (hastText(ticketRequest.description()) && ticketRequest.title().equalsIgnoreCase(ticket.getDescription())) {
+        if (hastText(ticketRequest.description()) && !ticketRequest.description().equals(ticket.getDescription())) {
             ticket.setDescription(ticketRequest.description());
             hasUpdate = true;
         }
