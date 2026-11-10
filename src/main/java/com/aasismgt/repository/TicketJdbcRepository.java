@@ -2,8 +2,10 @@ package com.aasismgt.repository;
 
 import com.aasismgt.enums.AssignmentStatus;
 import com.aasismgt.enums.ProgressStatus;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import com.aasismgt.entities.User;
 import com.aasismgt.enums.GeneralStatus;
@@ -54,65 +56,7 @@ public class TicketJdbcRepository {
             WHERE general_status = ?
             """);
 
-        List<Object> params = new ArrayList<>();
-
-        params.add(GeneralStatus.ACTIVE.name());
-
-        // Employee can only see tickets assigned to them
-        if (user.getRole() == Roles.EMPLOYEE) {
-            sql.append(" AND assigned_to = ?");
-            params.add(user.getId());
-        }
-
-        // Filter by progress status
-        if (filter.progressStatus() != null) {
-            sql.append(" AND progress_status = ?");
-            params.add(filter.progressStatus().name());
-        }
-
-        // Filter by assignment status (Admin only)
-        if (filter.assignmentStatus() != null) {
-            sql.append(" AND assignment_status = ?");
-            params.add(filter.assignmentStatus().name());
-        }
-
-        // Filter by assignment date range (Admin only)
-        if (filter.assignedFrom() != null) {
-            Instant startDate = filter.assignedFrom()
-                    .atStartOfDay(ZoneId.of("Africa/Lagos"))
-                    .toInstant();
-
-            sql.append(" AND assigned_at >= ?");
-            params.add(Timestamp.from(startDate));
-        }
-
-        if (filter.assignedTo() != null) {
-            Instant endDate = filter.assignedTo()
-                    .plusDays(1)
-                    .atStartOfDay(ZoneId.of("Africa/Lagos"))
-                    .toInstant();
-
-            sql.append(" AND assigned_at < ?");
-            params.add(Timestamp.from(endDate));
-        }
-
-        // Search by title
-        if (filter.title() != null && !filter.title().isBlank()) {
-
-            String title = filter.title().trim().toLowerCase();
-
-            String pattern = switch (filter.titleMatch() == null
-                    ? com.aasismgt.enums.TitleMatch.CONTAINS
-                    : filter.titleMatch()) {
-
-                case STARTS_WITH -> title + "%";
-                case ENDS_WITH -> "%" + title;
-                case CONTAINS -> "%" + title + "%";
-            };
-
-            sql.append(" AND LOWER(title) LIKE ?");
-            params.add(pattern);
-        }
+        List<Object> params = buildFilter(filter, user, sql);
 
         // Pagination
         sql.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
@@ -162,22 +106,34 @@ public class TicketJdbcRepository {
             WHERE general_status = ?
             """);
 
+        List<Object> params = buildFilter(filter, user, sql);
+
+        Long total = jdbcTemplate.queryForObject(
+                sql.toString(),
+                Long.class,
+                params.toArray()
+        );
+
+        return total != null ? total : 0L;
+    }
+
+    private static List<Object> buildFilter(TicketFilterRequest filter, User user, StringBuilder sql) {
         List<Object> params = new ArrayList<>();
 
         params.add(GeneralStatus.ACTIVE.name());
 
         if (user.getRole() == Roles.EMPLOYEE) {
-            sql.append(" AND assigned_to = ?");
+            sql.append(" AND assigned_to = ? ");
             params.add(user.getId());
         }
 
         if (filter.progressStatus() != null) {
-            sql.append(" AND progress_status = ?");
+            sql.append(" AND progress_status = ? ");
             params.add(filter.progressStatus().name());
         }
 
         if (filter.assignmentStatus() != null) {
-            sql.append(" AND assignment_status = ?");
+            sql.append(" AND assignment_status = ? ");
             params.add(filter.assignmentStatus().name());
         }
 
@@ -186,7 +142,7 @@ public class TicketJdbcRepository {
                     .atStartOfDay(ZoneId.of("Africa/Lagos"))
                     .toInstant();
 
-            sql.append(" AND assigned_at >= ?");
+            sql.append(" AND assigned_at >= ? ");
             params.add(Timestamp.from(startDate));
         }
 
@@ -196,7 +152,7 @@ public class TicketJdbcRepository {
                     .atStartOfDay(ZoneId.of("Africa/Lagos"))
                     .toInstant();
 
-            sql.append(" AND assigned_at < ?");
+            sql.append(" AND assigned_at < ? ");
             params.add(Timestamp.from(endDate));
         }
 
@@ -216,13 +172,6 @@ public class TicketJdbcRepository {
             sql.append(" AND LOWER(title) LIKE ?");
             params.add(pattern);
         }
-
-        Long total = jdbcTemplate.queryForObject(
-                sql.toString(),
-                Long.class,
-                params.toArray()
-        );
-
-        return total != null ? total : 0L;
+        return params;
     }
 }
