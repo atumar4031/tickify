@@ -6,6 +6,7 @@ import com.aasismgt.enums.GeneralStatus;
 import com.aasismgt.enums.ProgressStatus;
 import com.aasismgt.reponse.ApiResponse;
 import com.aasismgt.reponse.TicketResponse;
+import com.aasismgt.repository.TicketJdbcRepository;
 import com.aasismgt.repository.TicketRepository;
 import com.aasismgt.repository.TicketSpecification;
 import com.aasismgt.request.TicketFilterRequest;
@@ -37,9 +38,12 @@ public class TicketServiceImpl implements TicketService {
 
     private final UserRepository userRepository;
 
-    public TicketServiceImpl(TicketRepository ticketRepository, UserRepository userRepository) {
+    private final TicketJdbcRepository ticketJdbcRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository, UserRepository userRepository, TicketJdbcRepository ticketJdbcRepository) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
+        this.ticketJdbcRepository = ticketJdbcRepository;
     }
 
     @Override
@@ -221,13 +225,7 @@ public class TicketServiceImpl implements TicketService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        Specification<Ticket> specification =
-                TicketSpecification.filterTickets(filterRequest, user);
-
-        Page<Ticket> tickets =
-                ticketRepository.findAll(specification, pageable);
-
-        return tickets.map(TicketResponse::from);
+        return ticketJdbcRepository.filterTickets(filterRequest, user, pageable);
     }
 
     private Page<Ticket> getPaginatedTicket(
