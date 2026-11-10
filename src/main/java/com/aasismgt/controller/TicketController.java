@@ -1,13 +1,20 @@
 package com.aasismgt.controller;
 
 
+import com.aasismgt.enums.AssignmentStatus;
+import com.aasismgt.enums.ProgressStatus;
+import com.aasismgt.enums.TitleMatch;
 import com.aasismgt.reponse.ApiResponse;
 import com.aasismgt.reponse.TicketResponse;
+import com.aasismgt.request.TicketFilterRequest;
 import com.aasismgt.request.TicketRequest;
 import com.aasismgt.service.TicketService;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/tickets")
@@ -46,8 +53,30 @@ public class TicketController {
 
 
     @GetMapping("/paged")
-    public Page<TicketResponse> getTickets(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        return ticketService.getTickets(page, size);
+    public Page<TicketResponse> getTickets(@RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "10") int size,
+                                           @RequestParam(required = false) ProgressStatus progressStatus,
+                                           @RequestParam(required = false) AssignmentStatus assignmentStatus,
+                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate assignedFrom,
+                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate assignedTo,
+                                           @RequestParam(required = false) String title,
+                                           @RequestParam(required = false) TitleMatch titleMatch
+    ) {
+
+        TicketFilterRequest filterRequest = new TicketFilterRequest(
+                progressStatus,
+                assignmentStatus,
+                assignedFrom,
+                assignedTo,
+                title,
+                titleMatch
+        );
+
+        return ticketService.getTickets(
+                page,
+                size,
+                filterRequest
+        );
     }
 
     @PutMapping("/{id}/assign")

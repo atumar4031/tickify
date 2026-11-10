@@ -6,7 +6,10 @@ import com.aasismgt.enums.GeneralStatus;
 import com.aasismgt.enums.ProgressStatus;
 import com.aasismgt.reponse.ApiResponse;
 import com.aasismgt.reponse.TicketResponse;
+import com.aasismgt.repository.TicketJdbcRepository;
 import com.aasismgt.repository.TicketRepository;
+import com.aasismgt.repository.TicketSpecification;
+import com.aasismgt.request.TicketFilterRequest;
 import com.aasismgt.request.TicketRequest;
 import com.aasismgt.service.TicketService;
 import com.aasismgt.repository.UserRepository;
@@ -18,6 +21,7 @@ import org.springframework.boot.data.autoconfigure.web.DataWebProperties;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -34,9 +38,12 @@ public class TicketServiceImpl implements TicketService {
 
     private final UserRepository userRepository;
 
-    public TicketServiceImpl(TicketRepository ticketRepository, UserRepository userRepository) {
+    private final TicketJdbcRepository ticketJdbcRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository, UserRepository userRepository, TicketJdbcRepository ticketJdbcRepository) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
+        this.ticketJdbcRepository = ticketJdbcRepository;
     }
 
     @Override
@@ -98,12 +105,12 @@ public class TicketServiceImpl implements TicketService {
         }
 
         boolean hasUpdate = false;
-        if (hastText(ticketRequest.title()) && ticketRequest.title().equalsIgnoreCase(ticket.getTitle())) {
+        if (hastText(ticketRequest.title()) && !ticketRequest.title().equals(ticket.getTitle())) {
             ticket.setTitle(ticketRequest.title());
             hasUpdate = true;
         }
 
-        if (hastText(ticketRequest.description()) && ticketRequest.title().equalsIgnoreCase(ticket.getDescription())) {
+        if (hastText(ticketRequest.description()) && !ticketRequest.description().equals(ticket.getDescription())) {
             ticket.setDescription(ticketRequest.description());
             hasUpdate = true;
         }
@@ -189,29 +196,103 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public Page<TicketResponse> getTickets(int page, int size) {
+    public Page<TicketResponse> getTickets(
+            int page,
+            int size,
+            TicketFilterRequest filterRequest) {
 
         User user = getCurrentUser();
 
         if (user == null) {
-           throw new RuntimeException("User not authenticated");
+            throw new RuntimeException("User not authenticated");
         }
 
-        PageRequest pageRequest = PageRequest.of(page, size);
-        Page<Ticket> tickets =  getPaginatedTicket(pageRequest, user);
-        return tickets.map(TicketResponse::from);
+        if (page < 0 || size <= 0) {
+            throw new IllegalArgumentException(
+                    "Invalid pagination values"
+            );
+        }
+
+        if (filterRequest.assignedFrom() != null
+                && filterRequest.assignedTo() != null
+                && filterRequest.assignedFrom()
+                .isAfter(filterRequest.assignedTo())) {
+
+            throw new IllegalArgumentException(
+                    "Start date cannot be after end date"
+            );
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        return ticketJdbcRepository.filterTickets(filterRequest, user, pageable);
     }
 
+    private Page<Ticket> getPaginatedTicket(
+            Pageable pageable,
+            User user,
+            ProgressStatus progressStatus) {
 
-    private Page<Ticket> getPaginatedTicket(PageRequest pageRequest, User user) {
         return switch (user.getRole()) {
-//            case ADMIN -> ticketRepository.findAll(pageRequest);
-            case ADMIN -> ticketRepository.findByGeneralStatus(GeneralStatus.ACTIVE, pageRequest);
-            case EMPLOYEE -> ticketRepository.findAllByAssignedToAndGeneralStatus(user.getId(), GeneralStatus.ACTIVE, pageRequest);
-            case REVIEWER -> ticketRepository.findByGeneralStatusAndProgressStatus(GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW, pageRequest);
-            default -> throw new RuntimeException("You are not authorized to view tickets");
+
+            case ADMIN, REVIEWER -> {
+                if (progressStatus != null) {
+                    yield ticketRepository.findAllByGeneralStatusAndProgressStatus(
+                            GeneralStatus.ACTIVE,
+                            progressStatus,
+                            pageable
+                    );
+                }
+
+                yield ticketRepository.findAllByGeneralStatus(
+                        GeneralStatus.ACTIVE,
+                        pageable
+                );
+            }
+
+            case EMPLOYEE -> {
+                if (progressStatus != null) {
+                    yield ticketRepository
+                            .findByAssignedToAndGeneralStatusAndProgressStatus(
+                                    user.getId(),
+                                    GeneralStatus.ACTIVE,
+                                    progressStatus,
+                                    pageable
+                            );
+                }
+
+                yield ticketRepository.findAllByAssignedToAndGeneralStatus(
+                        user.getId(),
+                        GeneralStatus.ACTIVE,
+                        pageable
+                );
+            }
         };
     }
+
+//    @Override
+//    public Page<TicketResponse> getTickets(int page, int size) {
+//
+//        User user = getCurrentUser();
+//
+//        if (user == null) {
+//           throw new RuntimeException("User not authenticated");
+//        }
+//
+//        PageRequest pageRequest = PageRequest.of(page, size);
+//        Page<Ticket> tickets =  getPaginatedTicket(pageRequest, user);
+//        return tickets.map(TicketResponse::from);
+//    }
+//
+//    private Page<Ticket> getPaginatedTicket(PageRequest pageRequest, User user) {
+//        return switch (user.getRole()) {
+////            case ADMIN -> ticketRepository.findAll(pageRequest);
+//            case ADMIN -> ticketRepository.findAllByGeneralStatus(GeneralStatus.ACTIVE, pageRequest);
+//            case EMPLOYEE -> ticketRepository.findAllByAssignedToAndGeneralStatus(user.getId(), GeneralStatus.ACTIVE, pageRequest);
+//            case REVIEWER -> ticketRepository.findAllByGeneralStatusAndProgressStatus(GeneralStatus.ACTIVE, ProgressStatus.IN_REVIEW, pageRequest);
+//            default -> throw new RuntimeException("You are not authorized to view tickets");
+//        };
+//    }
 
 //        List<Ticket> tickets;
 //        if (user.getRole() == Roles.ADMIN) {
@@ -237,6 +318,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public ResponseEntity<ApiResponse> assignTicket(Long id, Long userId) {
+        // admin
 
         User admin = getCurrentUser();
 
